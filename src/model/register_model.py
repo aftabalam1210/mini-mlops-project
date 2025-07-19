@@ -2,14 +2,18 @@ import json
 import mlflow
 import logging
 import os
+from dotenv import load_dotenv
 
-# ─── DagsHub MLflow Auth (Hardcoded for dev ONLY) ──────────────────────────
-DAGSHUB_USERNAME = "aftabalam1210"
-DAGSHUB_TOKEN = "24d2e8f2997ac17d79d399e508358423b4943acf"  # 🔁 replace this
+load_dotenv() 
 
-# Set MLflow access credentials for authentication
+# Now safely extract them for your MLflow/DagsHub auth
+DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME")
+DAGSHUB_TOKEN = os.getenv("DAGSHUB_TOKEN")
+
+# Set MLflow env variables securely
 os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
 os.environ["MLFLOW_TRACKING_PASSWORD"] = DAGSHUB_TOKEN
+
 
 # Set MLflow Tracking URI linked to your DagsHub repo
 mlflow.set_tracking_uri("https://dagshub.com/aftabalam1210/mini-mlops-project.mlflow")

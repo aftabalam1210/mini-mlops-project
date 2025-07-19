@@ -15,11 +15,15 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_a
 import mlflow
 import os
 
-# 🔐 DagsHub Credentials
-DAGSHUB_USERNAME = "aftabalam1210"
-DAGSHUB_TOKEN = "24d2e8f2997ac17d79d399e508358423b4943acf"  # 🔁 Replace with your real token
+from dotenv import load_dotenv
 
-# ✅ Set credentials using environment variables
+load_dotenv() 
+
+# Now safely extract them for your MLflow/DagsHub auth
+DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME")
+DAGSHUB_TOKEN = os.getenv("DAGSHUB_TOKEN")
+
+# Set MLflow env variables securely
 os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
 os.environ["MLFLOW_TRACKING_PASSWORD"] = DAGSHUB_TOKEN
 
