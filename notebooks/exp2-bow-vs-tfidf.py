@@ -1,8 +1,9 @@
-# bow vs tfidf
-
 # Import necessary libraries
 import mlflow
 import mlflow.sklearn
+from mlflow.data import from_pandas
+
+import dagshub
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -16,56 +17,42 @@ import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import numpy as np
-import os
 
-import dagshub
-
+# DagsHub + MLflow connection
 mlflow.set_tracking_uri('https://dagshub.com/aftabalam1210/mini-mlops-project.mlflow')
 dagshub.init(repo_owner='aftabalam1210', repo_name='mini-mlops-project', mlflow=True)
 
-# Load the data
+# Load the dataset
 df = pd.read_csv('https://raw.githubusercontent.com/campusx-official/jupyter-masterclass/main/tweet_emotions.csv').drop(columns=['tweet_id'])
-df.head()
 
-# Define text preprocessing functions
+# ---------------------------------------
+# Text Preprocessing Functions
+# ---------------------------------------
+
 def lemmatization(text):
-    """Lemmatize the text."""
     lemmatizer = WordNetLemmatizer()
-    text = text.split()
-    text = [lemmatizer.lemmatize(word) for word in text]
-    return " ".join(text)
+    return " ".join([lemmatizer.lemmatize(word) for word in text.split()])
 
 def remove_stop_words(text):
-    """Remove stop words from the text."""
     stop_words = set(stopwords.words("english"))
-    text = [word for word in str(text).split() if word not in stop_words]
-    return " ".join(text)
+    return " ".join([word for word in str(text).split() if word not in stop_words])
 
 def removing_numbers(text):
-    """Remove numbers from the text."""
-    text = ''.join([char for char in text if not char.isdigit()])
-    return text
+    return ''.join([char for char in text if not char.isdigit()])
 
 def lower_case(text):
-    """Convert text to lower case."""
-    text = text.split()
-    text = [word.lower() for word in text]
-    return " ".join(text)
+    return " ".join([word.lower() for word in text.split()])
 
 def removing_punctuations(text):
-    """Remove punctuations from the text."""
     text = re.sub('[%s]' % re.escape(string.punctuation), ' ', text)
-    text = text.replace('؛', "")
     text = re.sub('\s+', ' ', text).strip()
     return text
 
 def removing_urls(text):
-    """Remove URLs from the text."""
     url_pattern = re.compile(r'https?://\S+|www\.\S+')
     return url_pattern.sub(r'', text)
 
 def normalize_text(df):
-    """Normalize the text data."""
     try:
         df['content'] = df['content'].apply(lower_case)
         df['content'] = df['content'].apply(remove_stop_words)
@@ -78,53 +65,59 @@ def normalize_text(df):
         print(f'Error during text normalization: {e}')
         raise
 
-# Normalize the text data
+# ---------------------------------------
+# Preprocessing Pipeline
+# ---------------------------------------
 df = normalize_text(df)
+df = df[df['sentiment'].isin(['happiness', 'sadness'])]
+df['sentiment'] = df['sentiment'].replace({'sadness': 0, 'happiness': 1})
 
-x = df['sentiment'].isin(['happiness','sadness'])
-df = df[x]
-
-df['sentiment'] = df['sentiment'].replace({'sadness':0, 'happiness':1})
-
-# Set the experiment name
+# ---------------------------------------
+# MLflow Experiment Setup
+# ---------------------------------------
 mlflow.set_experiment("Bow vs TfIdf")
 
-# Define feature extraction methods
+# Feature extraction approaches
 vectorizers = {
     'BoW': CountVectorizer(),
     'TF-IDF': TfidfVectorizer()
 }
 
-# Define algorithms
+# ML Algorithms
 algorithms = {
     'LogisticRegression': LogisticRegression(),
     'MultinomialNB': MultinomialNB(),
-    'XGBoost': XGBClassifier(),
+    'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='logloss'),
     'RandomForest': RandomForestClassifier(),
     'GradientBoosting': GradientBoostingClassifier()
 }
 
-# Start the parent run
+# ---------------------------------------
+# Parent MLflow run
+# ---------------------------------------
 with mlflow.start_run(run_name="All Experiments") as parent_run:
-    # Loop through algorithms and feature extraction methods (Child Runs)
     for algo_name, algorithm in algorithms.items():
         for vec_name, vectorizer in vectorizers.items():
             with mlflow.start_run(run_name=f"{algo_name} with {vec_name}", nested=True) as child_run:
+                
+                # Extract features
                 X = vectorizer.fit_transform(df['content'])
                 y = df['sentiment']
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-                
 
-                # Log preprocessing parameters
+                # Log input dataset - ✅ NEW
+                mlflow.log_input(from_pandas(df, source="processed_tweet_emotions.csv", name="preprocessed_dataset"))
+
+                # Log parameters
                 mlflow.log_param("vectorizer", vec_name)
                 mlflow.log_param("algorithm", algo_name)
                 mlflow.log_param("test_size", 0.2)
                 
-                # Model training
+                # Train model
                 model = algorithm
                 model.fit(X_train, y_train)
                 
-                # Log model parameters
+                # Log model-specific parameters
                 if algo_name == 'LogisticRegression':
                     mlflow.log_param("C", model.C)
                 elif algo_name == 'MultinomialNB':
@@ -140,28 +133,25 @@ with mlflow.start_run(run_name="All Experiments") as parent_run:
                     mlflow.log_param("learning_rate", model.learning_rate)
                     mlflow.log_param("max_depth", model.max_depth)
                 
-                # Model evaluation
+                # Predict and evaluate
                 y_pred = model.predict(X_test)
                 accuracy = accuracy_score(y_test, y_pred)
                 precision = precision_score(y_test, y_pred)
                 recall = recall_score(y_test, y_pred)
                 f1 = f1_score(y_test, y_pred)
-                
-                # Log evaluation metrics
+
+                # Log metrics
                 mlflow.log_metric("accuracy", accuracy)
                 mlflow.log_metric("precision", precision)
                 mlflow.log_metric("recall", recall)
                 mlflow.log_metric("f1_score", f1)
-                
+
                 # Log model
-                mlflow.sklearn.log_model(model, "model")
-                
-                # Save and log the notebook
-                mlflow.log_artifact(__file__)
-                
-                # Print the results for verification
-                print(f"Algorithm: {algo_name}, Feature Engineering: {vec_name}")
-                print(f"Accuracy: {accuracy}")
-                print(f"Precision: {precision}")
-                print(f"Recall: {recall}")
-                print(f"F1 Score: {f1}")
+                mlflow.sklearn.log_model(model, artifact_path="model")
+
+                # Print summary
+                print(f"\n📊 Algorithm: {algo_name} | Vectorizer: {vec_name}")
+                print(f"✅ Accuracy: {accuracy:.4f}")
+                print(f"✅ Precision: {precision:.4f}")
+                print(f"✅ Recall: {recall:.4f}")
+                print(f"✅ F1 Score: {f1:.4f}")
