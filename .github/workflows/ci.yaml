@@ -42,3 +42,21 @@ jobs:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         run: |
           python -m unittest tests/test_model.py
+
+      
+      - name: Promote model to production
+        # This step runs only if all previous steps in the job have succeeded
+        if: success()
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: python promote_model.py
+
+      - name: Run Flask app tests
+        # This step also runs only if all previous steps have succeeded
+        if: success()
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: python -m unittest tests/test_flask_app.py
+
