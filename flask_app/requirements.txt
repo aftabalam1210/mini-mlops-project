@@ -1,0 +1,8 @@
+Flask==3.0.0
+gunicorn
+mlflow-skinny==2.9.2
+nltk==3.8.1
+numpy==1.26.4
+pandas==2.2.1
+python-dotenv==1.0.1
+scikit-learn
