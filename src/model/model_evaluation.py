@@ -7,25 +7,26 @@ import numpy as np
 import mlflow
 import mlflow.sklearn
 from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score
+from dotenv import load_dotenv
+
 
 # ───────────────────────────────────────────────────────────────────
 # 🔐 MLflow + DagsHub Authentication using Token (No ENV Variables)
 # ───────────────────────────────────────────────────────────────────
 
-import mlflow
-import os
-
-from dotenv import load_dotenv
 
 load_dotenv() 
 
-# Now safely extract them for your MLflow/DagsHub auth
-DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME")
-DAGSHUB_TOKEN = os.getenv("DAGSHUB_TOKEN")
+DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME", "")
+DAGSHUB_TOKEN = os.getenv("DAGSHUB_TOKEN", "")
 
-# Set MLflow env variables securely
+if not DAGSHUB_USERNAME or not DAGSHUB_TOKEN:
+    raise ValueError("❌ Missing DagsHub credentials. Make sure you pass DAGSHUB_USERNAME and DAGSHUB_TOKEN.")
+
+# Set MLflow auth env vars
 os.environ["MLFLOW_TRACKING_USERNAME"] = DAGSHUB_USERNAME
 os.environ["MLFLOW_TRACKING_PASSWORD"] = DAGSHUB_TOKEN
+
 
 # ✅ Set the MLflow tracking URI to your DagsHub repo
 mlflow.set_tracking_uri("https://dagshub.com/aftabalam1210/mini-mlops-project.mlflow")
