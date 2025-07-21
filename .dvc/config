@@ -1,2 +1,6 @@
+[core]
+    remote = storage
 ['remote "myremote"']
+    url = C:\Users\Lenovo\AppData\Local\Temp
+['remote "storage"']
     url = C:\Users\Lenovo\AppData\Local\Temp
