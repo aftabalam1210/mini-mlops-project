@@ -28,12 +28,9 @@ jobs:
           pip install -r requirements.txt
           pip install "dvc[http]"
 
-      # 👇 Removed incorrect remote config for non-existent 'origin'
+      # 🚫 REMOVE DVC PULL — since you have NO remote accessible from CI
+      # ✅ Instead, we force pipeline to run from scratch
 
-      - name: Pull data and model files from DVC remote
+      - name: Run DVC pipeline from scratch
         run: |
-          dvc pull
-
-      - name: Run DVC pipeline
-        run: |
-          dvc repro
+          dvc repro --force
